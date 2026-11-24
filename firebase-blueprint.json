@@ -1,0 +1,270 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated business owner profile with private PII isolated to the owner.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 254 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "createdAt", "updatedAt"]
+    },
+    "Business": {
+      "title": "Business",
+      "description": "Multi-tenant business workspace and AI assistant configuration.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "websiteUrl": { "type": "string", "maxLength": 300 },
+        "contactEmail": { "type": "string", "minLength": 3, "maxLength": 254 },
+        "contactPhone": { "type": "string", "maxLength": 40 },
+        "operatingHours": { "type": "string", "maxLength": 300 },
+        "location": { "type": "string", "maxLength": 200 },
+        "logoUrl": { "type": "string", "maxLength": 500 },
+        "assistantName": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "welcomeMessage": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "tone": { "type": "string", "enum": ["Friendly", "Professional", "Casual", "Formal", "Custom"] },
+        "customToneInstructions": { "type": "string", "maxLength": 400 },
+        "responseLength": { "type": "string", "enum": ["Short", "Balanced", "Detailed"] },
+        "primaryLanguage": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "autoDetectLanguage": { "type": "boolean" },
+        "voiceEnabled": { "type": "boolean" },
+        "brandColor": { "type": "string", "maxLength": 20, "pattern": "^#[0-9a-fA-F]{6}$" },
+        "saveTranscripts": { "type": "boolean" },
+        "transcriptRetentionDays": { "type": "number" },
+        "dailyAiLimit": { "type": "number" },
+        "isPublished": { "type": "boolean" },
+        "onboardingStep": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id", "ownerId", "name", "category", "description", "contactEmail",
+        "operatingHours", "assistantName", "welcomeMessage", "tone",
+        "responseLength", "primaryLanguage", "autoDetectLanguage", "voiceEnabled",
+        "brandColor", "saveTranscripts", "transcriptRetentionDays", "dailyAiLimit",
+        "isPublished", "onboardingStep", "createdAt", "updatedAt"
+      ]
+    },
+    "BusinessMember": {
+      "title": "BusinessMember",
+      "description": "Authorized team member record inside a business workspace.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "businessId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "role": { "type": "string", "enum": ["owner", "editor"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "businessId", "ownerId", "role", "createdAt"]
+    },
+    "KnowledgeItem": {
+      "title": "KnowledgeItem",
+      "description": "Extracted document or manual knowledge base entry belonging strictly to one business.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "businessId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "sourceType": { "type": "string", "enum": ["manual", "faq", "product", "pdf", "txt", "csv", "docx"] },
+        "fileName": { "type": "string", "maxLength": 200 },
+        "content": { "type": "string", "minLength": 1, "maxLength": 50000 },
+        "chunksCount": { "type": "number" },
+        "status": { "type": "string", "enum": ["processed", "error"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "businessId", "ownerId", "title", "sourceType", "content", "chunksCount", "status", "createdAt", "updatedAt"]
+    },
+    "WidgetSettings": {
+      "title": "WidgetSettings",
+      "description": "Embeddable website widget configuration for a business.",
+      "type": "object",
+      "properties": {
+        "businessId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "position": { "type": "string", "enum": ["bottom-right", "bottom-left"] },
+        "launcherText": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "brandColor": { "type": "string", "maxLength": 20, "pattern": "^#[0-9a-fA-F]{6}$" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["businessId", "ownerId", "position", "launcherText", "brandColor", "updatedAt"]
+    },
+    "PublishedBot": {
+      "title": "PublishedBot",
+      "description": "Public chatbot runtime profile with server-encrypted knowledge context.",
+      "type": "object",
+      "properties": {
+        "businessId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "businessName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "category": { "type": "string", "maxLength": 80 },
+        "logoUrl": { "type": "string", "maxLength": 500 },
+        "assistantName": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "welcomeMessage": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "brandColor": { "type": "string", "maxLength": 20, "pattern": "^#[0-9a-fA-F]{6}$" },
+        "primaryLanguage": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "autoDetectLanguage": { "type": "boolean" },
+        "voiceEnabled": { "type": "boolean" },
+        "widgetPosition": { "type": "string", "enum": ["bottom-right", "bottom-left"] },
+        "launcherText": { "type": "string", "maxLength": 60 },
+        "operatingHours": { "type": "string", "maxLength": 300 },
+        "supportEmail": { "type": "string", "maxLength": 254 },
+        "supportPhone": { "type": "string", "maxLength": 40 },
+        "saveTranscripts": { "type": "boolean" },
+        "dailyAiLimit": { "type": "number" },
+        "isPublished": { "type": "boolean" },
+        "encryptedContext": { "type": "string", "maxLength": 200000 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "businessId", "ownerId", "businessName", "assistantName", "welcomeMessage",
+        "brandColor", "primaryLanguage", "autoDetectLanguage", "voiceEnabled",
+        "widgetPosition", "launcherText", "saveTranscripts", "dailyAiLimit",
+        "isPublished", "encryptedContext", "updatedAt"
+      ]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "Customer support conversation thread scoped to a single business.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "businessId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "channel": { "type": "string", "enum": ["text", "voice", "widget"] },
+        "language": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "status": { "type": "string", "enum": ["active", "resolved", "needs_human", "unanswered"] },
+        "lastMessagePreview": { "type": "string", "maxLength": 240 },
+        "hadUnanswered": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "businessId", "ownerId", "channel", "language", "status", "lastMessagePreview", "hadUnanswered", "createdAt", "updatedAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Single message inside a customer conversation.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "conversationId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "businessId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "role": { "type": "string", "enum": ["customer", "assistant"] },
+        "content": { "type": "string", "minLength": 1, "maxLength": 8000 },
+        "language": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "mode": { "type": "string", "enum": ["text", "voice"] },
+        "unanswered": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "conversationId", "businessId", "ownerId", "role", "content", "language", "mode", "unanswered", "createdAt"]
+    },
+    "SupportTicket": {
+      "title": "SupportTicket",
+      "description": "Human handover support request submitted by a customer.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "businessId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "conversationId": { "type": "string", "maxLength": 64 },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "customerEmail": { "type": "string", "minLength": 3, "maxLength": 254 },
+        "customerPhone": { "type": "string", "maxLength": 40 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string", "minLength": 5, "maxLength": 3000 },
+        "status": { "type": "string", "enum": ["open", "in_progress", "resolved"] },
+        "internalNotes": { "type": "string", "maxLength": 2000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "businessId", "ownerId", "customerEmail", "category", "description", "status", "internalNotes", "createdAt", "updatedAt"]
+    },
+    "UsageEvent": {
+      "title": "UsageEvent",
+      "description": "AI request usage record for free-tier quota and analytics tracking.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "businessId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "date": { "type": "string", "maxLength": 10, "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "eventType": { "type": "string", "enum": ["text", "voice", "tts", "quota_hit"] },
+        "language": { "type": "string", "maxLength": 40 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "businessId", "ownerId", "date", "eventType", "language", "createdAt"]
+    },
+    "CustomerFeedback": {
+      "title": "CustomerFeedback",
+      "description": "Optional customer rating for a chatbot session.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "businessId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "conversationId": { "type": "string", "maxLength": 64 },
+        "rating": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "businessId", "ownerId", "rating", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user account profiles."
+    },
+    "/businesses/{businessId}": {
+      "schema": { "$ref": "#/entities/Business" },
+      "description": "Multi-tenant business workspaces."
+    },
+    "/businesses/{businessId}/members/{memberId}": {
+      "schema": { "$ref": "#/entities/BusinessMember" },
+      "description": "Business workspace membership records."
+    },
+    "/businesses/{businessId}/knowledge/{itemId}": {
+      "schema": { "$ref": "#/entities/KnowledgeItem" },
+      "description": "Business-scoped knowledge base documents and FAQs."
+    },
+    "/businesses/{businessId}/widgetSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/WidgetSettings" },
+      "description": "Website chatbot widget appearance settings."
+    },
+    "/publishedBots/{businessId}": {
+      "schema": { "$ref": "#/entities/PublishedBot" },
+      "description": "Public chatbot runtime profiles with encrypted knowledge context."
+    },
+    "/conversations/{conversationId}": {
+      "schema": { "$ref": "#/entities/Conversation" },
+      "description": "Customer conversations isolated per business owner."
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Messages belonging to a conversation."
+    },
+    "/supportTickets/{ticketId}": {
+      "schema": { "$ref": "#/entities/SupportTicket" },
+      "description": "Human support handover tickets."
+    },
+    "/usageEvents/{eventId}": {
+      "schema": { "$ref": "#/entities/UsageEvent" },
+      "description": "Per-business AI usage and quota tracking records."
+    },
+    "/feedbacks/{feedbackId}": {
+      "schema": { "$ref": "#/entities/CustomerFeedback" },
+      "description": "Customer satisfaction ratings for AI conversations."
+    }
+  }
+}

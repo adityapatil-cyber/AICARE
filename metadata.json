@@ -1,0 +1,6 @@
+{
+  "name": "AICare — Multilingual AI Customer Support",
+  "description": "Your Business. Always Answered. Create and publish your own multilingual AI customer support assistant with text and voice in minutes.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

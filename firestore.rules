@@ -1,0 +1,479 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Validation Blueprints
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == request.auth.uid
+        && data.email is string && data.email.size() <= 254
+        && data.displayName is string && data.displayName.size() <= 100
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBusiness(data) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'name', 'category', 'description', 'contactEmail',
+          'operatingHours', 'assistantName', 'welcomeMessage', 'tone',
+          'responseLength', 'primaryLanguage', 'autoDetectLanguage', 'voiceEnabled',
+          'brandColor', 'saveTranscripts', 'transcriptRetentionDays', 'dailyAiLimit',
+          'isPublished', 'onboardingStep', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerId', 'name', 'category', 'description', 'websiteUrl',
+          'contactEmail', 'contactPhone', 'operatingHours', 'location', 'logoUrl',
+          'assistantName', 'welcomeMessage', 'tone', 'customToneInstructions',
+          'responseLength', 'primaryLanguage', 'autoDetectLanguage', 'voiceEnabled',
+          'brandColor', 'saveTranscripts', 'transcriptRetentionDays', 'dailyAiLimit',
+          'isPublished', 'onboardingStep', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id) && data.id.size() <= 64
+        && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 80
+        && data.description is string && data.description.size() <= 1000
+        && (!('websiteUrl' in data) || (data.websiteUrl is string && data.websiteUrl.size() <= 300))
+        && data.contactEmail is string && data.contactEmail.size() >= 3 && data.contactEmail.size() <= 254
+        && (!('contactPhone' in data) || (data.contactPhone is string && data.contactPhone.size() <= 40))
+        && data.operatingHours is string && data.operatingHours.size() <= 300
+        && (!('location' in data) || (data.location is string && data.location.size() <= 200))
+        && (!('logoUrl' in data) || (data.logoUrl is string && data.logoUrl.size() <= 500))
+        && data.assistantName is string && data.assistantName.size() >= 1 && data.assistantName.size() <= 60
+        && data.welcomeMessage is string && data.welcomeMessage.size() >= 1 && data.welcomeMessage.size() <= 500
+        && data.tone in ['Friendly', 'Professional', 'Casual', 'Formal', 'Custom']
+        && (!('customToneInstructions' in data) || (data.customToneInstructions is string && data.customToneInstructions.size() <= 400))
+        && data.responseLength in ['Short', 'Balanced', 'Detailed']
+        && data.primaryLanguage is string && data.primaryLanguage.size() >= 2 && data.primaryLanguage.size() <= 40
+        && data.autoDetectLanguage is bool
+        && data.voiceEnabled is bool
+        && data.brandColor is string && data.brandColor.size() <= 20 && data.brandColor.matches('^#[0-9a-fA-F]{6}$')
+        && data.saveTranscripts is bool
+        && data.transcriptRetentionDays is number && data.transcriptRetentionDays >= 1 && data.transcriptRetentionDays <= 365
+        && data.dailyAiLimit is number && data.dailyAiLimit >= 1 && data.dailyAiLimit <= 10000
+        && data.isPublished is bool
+        && data.onboardingStep is number && data.onboardingStep >= 1 && data.onboardingStep <= 4
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBusinessMember(data) {
+      return data.keys().hasAll(['uid', 'businessId', 'ownerId', 'role', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'businessId', 'ownerId', 'role', 'createdAt'])
+        && isValidId(data.uid)
+        && isValidId(data.businessId) && data.businessId.size() <= 64
+        && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.role in ['owner', 'editor']
+        && data.createdAt is timestamp;
+    }
+
+    function isValidKnowledgeItem(data) {
+      return data.keys().hasAll(['id', 'businessId', 'ownerId', 'title', 'sourceType', 'content', 'chunksCount', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'businessId', 'ownerId', 'title', 'sourceType', 'fileName', 'content', 'chunksCount', 'status', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id.size() <= 64
+        && isValidId(data.businessId) && data.businessId.size() <= 64
+        && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.sourceType in ['manual', 'faq', 'product', 'pdf', 'txt', 'csv', 'docx']
+        && (!('fileName' in data) || (data.fileName is string && data.fileName.size() <= 200))
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 50000
+        && data.chunksCount is number && data.chunksCount >= 1 && data.chunksCount <= 500
+        && data.status in ['processed', 'error']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWidgetSettings(data) {
+      return data.keys().hasAll(['businessId', 'ownerId', 'position', 'launcherText', 'brandColor', 'updatedAt'])
+        && data.keys().hasOnly(['businessId', 'ownerId', 'position', 'launcherText', 'brandColor', 'updatedAt'])
+        && isValidId(data.businessId) && data.businessId.size() <= 64
+        && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.position in ['bottom-right', 'bottom-left']
+        && data.launcherText is string && data.launcherText.size() >= 1 && data.launcherText.size() <= 60
+        && data.brandColor is string && data.brandColor.size() <= 20 && data.brandColor.matches('^#[0-9a-fA-F]{6}$')
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPublishedBot(data) {
+      return data.keys().hasAll([
+          'businessId', 'ownerId', 'businessName', 'assistantName', 'welcomeMessage',
+          'brandColor', 'primaryLanguage', 'autoDetectLanguage', 'voiceEnabled',
+          'widgetPosition', 'launcherText', 'saveTranscripts', 'dailyAiLimit',
+          'isPublished', 'encryptedContext', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'businessId', 'ownerId', 'businessName', 'category', 'logoUrl',
+          'assistantName', 'welcomeMessage', 'brandColor', 'primaryLanguage',
+          'autoDetectLanguage', 'voiceEnabled', 'widgetPosition', 'launcherText',
+          'operatingHours', 'supportEmail', 'supportPhone', 'saveTranscripts',
+          'dailyAiLimit', 'isPublished', 'encryptedContext', 'updatedAt'
+        ])
+        && isValidId(data.businessId) && data.businessId.size() <= 64
+        && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.businessName is string && data.businessName.size() >= 1 && data.businessName.size() <= 120
+        && (!('category' in data) || (data.category is string && data.category.size() <= 80))
+        && (!('logoUrl' in data) || (data.logoUrl is string && data.logoUrl.size() <= 500))
+        && data.assistantName is string && data.assistantName.size() >= 1 && data.assistantName.size() <= 60
+        && data.welcomeMessage is string && data.welcomeMessage.size() >= 1 && data.welcomeMessage.size() <= 500
+        && data.brandColor is string && data.brandColor.size() <= 20 && data.brandColor.matches('^#[0-9a-fA-F]{6}$')
+        && data.primaryLanguage is string && data.primaryLanguage.size() >= 2 && data.primaryLanguage.size() <= 40
+        && data.autoDetectLanguage is bool
+        && data.voiceEnabled is bool
+        && data.widgetPosition in ['bottom-right', 'bottom-left']
+        && data.launcherText is string && data.launcherText.size() >= 1 && data.launcherText.size() <= 60
+        && (!('operatingHours' in data) || (data.operatingHours is string && data.operatingHours.size() <= 300))
+        && (!('supportEmail' in data) || (data.supportEmail is string && data.supportEmail.size() <= 254))
+        && (!('supportPhone' in data) || (data.supportPhone is string && data.supportPhone.size() <= 40))
+        && data.saveTranscripts is bool
+        && data.dailyAiLimit is number && data.dailyAiLimit >= 1 && data.dailyAiLimit <= 10000
+        && data.isPublished is bool
+        && data.encryptedContext is string && data.encryptedContext.size() <= 200000
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidConversation(data) {
+      return data.keys().hasAll(['id', 'businessId', 'ownerId', 'channel', 'language', 'status', 'lastMessagePreview', 'hadUnanswered', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'businessId', 'ownerId', 'channel', 'language', 'status', 'lastMessagePreview', 'hadUnanswered', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id.size() <= 64
+        && isValidId(data.businessId) && data.businessId.size() <= 64
+        && isValidId(data.ownerId)
+        && data.channel in ['text', 'voice', 'widget']
+        && data.language is string && data.language.size() >= 2 && data.language.size() <= 40
+        && data.status in ['active', 'resolved', 'needs_human', 'unanswered']
+        && data.lastMessagePreview is string && data.lastMessagePreview.size() <= 240
+        && data.hadUnanswered is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidChatMessage(data) {
+      return data.keys().hasAll(['id', 'conversationId', 'businessId', 'ownerId', 'role', 'content', 'language', 'mode', 'unanswered', 'createdAt'])
+        && data.keys().hasOnly(['id', 'conversationId', 'businessId', 'ownerId', 'role', 'content', 'language', 'mode', 'unanswered', 'createdAt'])
+        && isValidId(data.id) && data.id.size() <= 64
+        && isValidId(data.conversationId) && data.conversationId.size() <= 64
+        && isValidId(data.businessId) && data.businessId.size() <= 64
+        && isValidId(data.ownerId)
+        && data.role in ['customer', 'assistant']
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 8000
+        && data.language is string && data.language.size() >= 2 && data.language.size() <= 40
+        && data.mode in ['text', 'voice']
+        && data.unanswered is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidSupportTicket(data) {
+      return data.keys().hasAll(['id', 'businessId', 'ownerId', 'customerEmail', 'category', 'description', 'status', 'internalNotes', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'businessId', 'ownerId', 'conversationId', 'customerName', 'customerEmail', 'customerPhone', 'category', 'description', 'status', 'internalNotes', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id.size() <= 64
+        && isValidId(data.businessId) && data.businessId.size() <= 64
+        && isValidId(data.ownerId)
+        && (!('conversationId' in data) || (data.conversationId is string && data.conversationId.size() <= 64))
+        && (!('customerName' in data) || (data.customerName is string && data.customerName.size() <= 100))
+        && data.customerEmail is string && data.customerEmail.size() >= 3 && data.customerEmail.size() <= 254
+        && (!('customerPhone' in data) || (data.customerPhone is string && data.customerPhone.size() <= 40))
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 80
+        && data.description is string && data.description.size() >= 5 && data.description.size() <= 3000
+        && data.status in ['open', 'in_progress', 'resolved']
+        && data.internalNotes is string && data.internalNotes.size() <= 2000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUsageEvent(data) {
+      return data.keys().hasAll(['id', 'businessId', 'ownerId', 'date', 'eventType', 'language', 'createdAt'])
+        && data.keys().hasOnly(['id', 'businessId', 'ownerId', 'date', 'eventType', 'language', 'createdAt'])
+        && isValidId(data.id) && data.id.size() <= 64
+        && isValidId(data.businessId) && data.businessId.size() <= 64
+        && isValidId(data.ownerId)
+        && data.date is string && data.date.size() == 10 && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.eventType in ['text', 'voice', 'tts', 'quota_hit']
+        && data.language is string && data.language.size() <= 40
+        && data.createdAt is timestamp;
+    }
+
+    function isValidFeedback(data) {
+      return data.keys().hasAll(['id', 'businessId', 'ownerId', 'rating', 'createdAt'])
+        && data.keys().hasOnly(['id', 'businessId', 'ownerId', 'conversationId', 'rating', 'createdAt'])
+        && isValidId(data.id) && data.id.size() <= 64
+        && isValidId(data.businessId) && data.businessId.size() <= 64
+        && isValidId(data.ownerId)
+        && (!('conversationId' in data) || (data.conversationId is string && data.conversationId.size() <= 64))
+        && data.rating is number && data.rating >= 1 && data.rating <= 5
+        && data.createdAt is timestamp;
+    }
+
+    // 1. User profiles (PII isolated strictly to owner)
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if false;
+      allow create: if isVerifiedUser() && isValidId(userId) && request.auth.uid == userId
+        && isValidUserProfile(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(userId) && request.auth.uid == userId
+        && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'displayName', 'updatedAt']);
+      allow delete: if isVerifiedUser() && isValidId(userId) && request.auth.uid == userId;
+    }
+
+    // 2. Multi-tenant business workspaces
+    match /businesses/{businessId} {
+      allow get: if isSignedIn() && isValidId(businessId) && resource != null && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isVerifiedUser() && isValidId(businessId)
+        && isValidBusiness(incoming())
+        && incoming().id == businessId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(businessId)
+        && isValidBusiness(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'category', 'description', 'websiteUrl', 'contactEmail',
+          'contactPhone', 'operatingHours', 'location', 'logoUrl', 'assistantName',
+          'welcomeMessage', 'tone', 'customToneInstructions', 'responseLength',
+          'primaryLanguage', 'autoDetectLanguage', 'voiceEnabled', 'brandColor',
+          'saveTranscripts', 'transcriptRetentionDays', 'dailyAiLimit',
+          'isPublished', 'onboardingStep', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(businessId) && existing().ownerId == request.auth.uid;
+
+      // Master Gate subcollection: members
+      match /members/{memberId} {
+        allow get: if isSignedIn() && isValidId(businessId) && isValidId(memberId)
+          && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid;
+        allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+        allow create: if isVerifiedUser() && isValidId(businessId) && isValidId(memberId)
+          && isValidBusinessMember(incoming())
+          && incoming().businessId == businessId
+          && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid
+          && incoming().createdAt == request.time;
+        allow update: if false;
+        allow delete: if isVerifiedUser() && isValidId(businessId) && isValidId(memberId)
+          && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid;
+      }
+
+      // Master Gate subcollection: knowledge base
+      match /knowledge/{itemId} {
+        allow get: if isSignedIn() && isValidId(businessId) && isValidId(itemId)
+          && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid;
+        allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+        allow create: if isVerifiedUser() && isValidId(businessId) && isValidId(itemId)
+          && isValidKnowledgeItem(incoming())
+          && incoming().id == itemId
+          && incoming().businessId == businessId
+          && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerifiedUser() && isValidId(businessId) && isValidId(itemId)
+          && isValidKnowledgeItem(incoming())
+          && existing().ownerId == request.auth.uid
+          && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid
+          && incoming().id == existing().id
+          && incoming().businessId == existing().businessId
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'sourceType', 'fileName', 'content', 'chunksCount', 'status', 'updatedAt'
+          ]);
+        allow delete: if isVerifiedUser() && isValidId(businessId) && isValidId(itemId)
+          && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid;
+      }
+
+      // Master Gate subcollection: widgetSettings
+      match /widgetSettings/{settingId} {
+        allow get: if isSignedIn() && isValidId(businessId) && isValidId(settingId)
+          && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid;
+        allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+        allow create: if isVerifiedUser() && isValidId(businessId) && isValidId(settingId)
+          && isValidWidgetSettings(incoming())
+          && incoming().businessId == businessId
+          && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid
+          && incoming().updatedAt == request.time;
+        allow update: if isVerifiedUser() && isValidId(businessId) && isValidId(settingId)
+          && isValidWidgetSettings(incoming())
+          && existing().ownerId == request.auth.uid
+          && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid
+          && incoming().businessId == existing().businessId
+          && incoming().ownerId == existing().ownerId
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['position', 'launcherText', 'brandColor', 'updatedAt']);
+        allow delete: if isVerifiedUser() && isValidId(businessId) && isValidId(settingId)
+          && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid;
+      }
+    }
+
+    // 3. Published Bots (publicly get-able by exact ID when published; never list-able; context encrypted)
+    match /publishedBots/{businessId} {
+      allow get: if isValidId(businessId) && resource != null
+        && (existing().isPublished == true || (isSignedIn() && existing().ownerId == request.auth.uid));
+      allow list: if false;
+      allow create: if isVerifiedUser() && isValidId(businessId)
+        && isValidPublishedBot(incoming())
+        && incoming().businessId == businessId
+        && exists(/databases/$(database)/documents/businesses/$(businessId))
+        && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(businessId)
+        && isValidPublishedBot(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().businessId == existing().businessId
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'businessName', 'category', 'logoUrl', 'assistantName', 'welcomeMessage',
+          'brandColor', 'primaryLanguage', 'autoDetectLanguage', 'voiceEnabled',
+          'widgetPosition', 'launcherText', 'operatingHours', 'supportEmail',
+          'supportPhone', 'saveTranscripts', 'dailyAiLimit', 'isPublished',
+          'encryptedContext', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(businessId) && existing().ownerId == request.auth.uid;
+    }
+
+    // 4. Conversations & Messages (public create on published bots; owner-only read/update/delete)
+    match /conversations/{conversationId} {
+      allow get: if isSignedIn() && isValidId(conversationId) && resource != null && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isValidId(conversationId)
+        && isValidConversation(incoming())
+        && incoming().id == conversationId
+        && exists(/databases/$(database)/documents/publishedBots/$(incoming().businessId))
+        && incoming().ownerId == get(/databases/$(database)/documents/publishedBots/$(incoming().businessId)).data.ownerId
+        && (
+          get(/databases/$(database)/documents/publishedBots/$(incoming().businessId)).data.isPublished == true
+          || (isSignedIn() && incoming().ownerId == request.auth.uid)
+        )
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(conversationId)
+        && isValidConversation(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().businessId == existing().businessId
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'status', 'language', 'lastMessagePreview', 'hadUnanswered', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(conversationId) && existing().ownerId == request.auth.uid;
+
+      match /messages/{messageId} {
+        allow get: if isSignedIn() && isValidId(conversationId) && isValidId(messageId)
+          && resource != null && existing().ownerId == request.auth.uid;
+        allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+        allow create: if isValidId(conversationId) && isValidId(messageId)
+          && isValidChatMessage(incoming())
+          && incoming().id == messageId
+          && incoming().conversationId == conversationId
+          && exists(/databases/$(database)/documents/conversations/$(conversationId))
+          && incoming().ownerId == get(/databases/$(database)/documents/conversations/$(conversationId)).data.ownerId
+          && incoming().businessId == get(/databases/$(database)/documents/conversations/$(conversationId)).data.businessId
+          && incoming().createdAt == request.time;
+        allow update: if false;
+        allow delete: if isVerifiedUser() && isValidId(conversationId) && isValidId(messageId)
+          && existing().ownerId == request.auth.uid;
+      }
+    }
+
+    // 5. Support Tickets (public create with status='open'; owner-only read/update/delete)
+    match /supportTickets/{ticketId} {
+      allow get: if isSignedIn() && isValidId(ticketId) && resource != null && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isValidId(ticketId)
+        && isValidSupportTicket(incoming())
+        && incoming().id == ticketId
+        && incoming().status == 'open'
+        && incoming().internalNotes == ''
+        && exists(/databases/$(database)/documents/publishedBots/$(incoming().businessId))
+        && incoming().ownerId == get(/databases/$(database)/documents/publishedBots/$(incoming().businessId)).data.ownerId
+        && (
+          get(/databases/$(database)/documents/publishedBots/$(incoming().businessId)).data.isPublished == true
+          || (isSignedIn() && incoming().ownerId == request.auth.uid)
+        )
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(ticketId)
+        && isValidSupportTicket(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().businessId == existing().businessId
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'internalNotes', 'updatedAt']);
+      allow delete: if isVerifiedUser() && isValidId(ticketId) && existing().ownerId == request.auth.uid;
+    }
+
+    // 6. Usage Events (public create for published bots; owner-only read/delete)
+    match /usageEvents/{eventId} {
+      allow get: if isSignedIn() && isValidId(eventId) && resource != null && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isValidId(eventId)
+        && isValidUsageEvent(incoming())
+        && incoming().id == eventId
+        && exists(/databases/$(database)/documents/publishedBots/$(incoming().businessId))
+        && incoming().ownerId == get(/databases/$(database)/documents/publishedBots/$(incoming().businessId)).data.ownerId
+        && (
+          get(/databases/$(database)/documents/publishedBots/$(incoming().businessId)).data.isPublished == true
+          || (isSignedIn() && incoming().ownerId == request.auth.uid)
+        )
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(eventId) && existing().ownerId == request.auth.uid;
+    }
+
+    // 7. Customer Feedback Ratings (public create for published bots; owner-only read/delete)
+    match /feedbacks/{feedbackId} {
+      allow get: if isSignedIn() && isValidId(feedbackId) && resource != null && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isValidId(feedbackId)
+        && isValidFeedback(incoming())
+        && incoming().id == feedbackId
+        && exists(/databases/$(database)/documents/publishedBots/$(incoming().businessId))
+        && incoming().ownerId == get(/databases/$(database)/documents/publishedBots/$(incoming().businessId)).data.ownerId
+        && (
+          get(/databases/$(database)/documents/publishedBots/$(incoming().businessId)).data.isPublished == true
+          || (isSignedIn() && incoming().ownerId == request.auth.uid)
+        )
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(feedbackId) && existing().ownerId == request.auth.uid;
+    }
+  }
+}
